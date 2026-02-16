@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DJ Playlist Optimizer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        .input-section {
+            margin-bottom: 30px;
+        }
+        
+        .song-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            padding: 12px 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #5568d3;
+        }
+        
+        .add-btn {
+            background: #48bb78;
+        }
+        
+        .add-btn:hover {
+            background: #38a169;
+        }
+        
+        #results {
+            margin-top: 30px;
+        }
+        
+        .song-result {
+            background: #f7fafc;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .song-title {
+            font-weight: bold;
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+        
+        .song-details {
+            color: #4a5568;
+            font-size: 14px;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #667eea;
+            padding: 20px;
+        }
+        
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎧 DJ Playlist Optimizer</h1>
+        <p class="subtitle">Enter your songs to analyze BPM and key</p>
+        
+        <div class="input-section">
+            <div id="song-inputs">
+                <div class="song-input">
+                    <input type="text" placeholder="Song Title" class="song-title-input">
+                    <input type="text" placeholder="Artist" class="artist-input">
+                </div>
+            </div>
+            <button onclick="addSongInput()" class="add-btn">+ Add Another Song</button>
+        </div>
+        
+        <button onclick="analyzeSongs()">Analyze Songs</button>
+        
+        <div id="results"></div>
+        
+        <div class="footer">
+            Powered by <a href="https://getsongbpm.com" target="_blank">GetSongBPM.com</a>
+        </div>
+    </div>
+    
+    <script>
+        function addSongInput() {
+            const container = document.getElementById('song-inputs');
+            const newInput = document.createElement('div');
+            newInput.className = 'song-input';
+            newInput.innerHTML = `
+                <input type="text" placeholder="Song Title" class="song-title-input">
+                <input type="text" placeholder="Artist" class="artist-input">
+            `;
+            container.appendChild(newInput);
+        }
+        
+        async function analyzeSongs() {
+            const songInputs = document.querySelectorAll('.song-input');
+            const songs = [];
+            
+            songInputs.forEach(input => {
+                const title = input.querySelector('.song-title-input').value.trim();
+                const artist = input.querySelector('.artist-input').value.trim();
+                
+                if (title && artist) {
+                    songs.push({ title, artist });
+                }
+            });
+            
+            if (songs.length === 0) {
+                alert('Please enter at least one song');
+                return;
+            }
+            
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="loading">Analyzing songs...</div>';
+            
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ songs })
+                });
+                
+                const data = await response.json();
+                displayResults(data.songs);
+            } catch (error) {
+                resultsDiv.innerHTML = '<div class="loading">Error analyzing songs</div>';
+            }
+        }
+        
+        function displayResults(songs) {
+            const resultsDiv = document.getElementById('results');
+            
+            if (songs.length === 0) {
+                resultsDiv.innerHTML = '<p>No results found</p>';
+                return;
+            }
+            
+            let html = '<h2 style="margin-bottom: 20px;">Results:</h2>';
+            
+            songs.forEach(song => {
+                html += `
+                    <div class="song-result">
+                        <div class="song-title">${song.title} - ${song.artist}</div>
+                        <div class="song-details">
+                            BPM: ${song.bpm || 'N/A'} | 
+                            Key: ${song.key || 'N/A'} | 
+                            Camelot: ${song.camelot || 'N/A'}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            resultsDiv.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
+```
+
+**Step 3: Project Structure**
+
+Your folder should look like this:
+```
+your-project/
+├── app.py
+└── templates/
+    └── index.html
