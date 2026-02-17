@@ -7,7 +7,6 @@ from flask import Flask, render_template, request, jsonify
 import requests
 
 app = Flask(__name__)
-API_KEY = '6770b0b81d2bd417dba76b33fd591683'
 
 # In-memory storage for master song list
 master_song_list = []
@@ -34,87 +33,79 @@ class SongInfo:
         }
 
 
+import base64
+
+import os
+
+SPOTIFY_CLIENT_ID = os.environ.get('SPOTIFY_CLIENT_ID')
+SPOTIFY_CLIENT_SECRET = os.environ.get('SPOTIFY_CLIENT_SECRET')
+
+def get_spotify_token():
+    credentials = f"{SPOTIFY_CLIENT_ID}:{SPOTIFY_CLIENT_SECRET}"
+    encoded = base64.b64encode(credentials.encode()).decode()
+    
+    response = requests.post('https://accounts.spotify.com/api/token', 
+        headers={'Authorization': f'Basic {encoded}'},
+        data={'grant_type': 'client_credentials'}
+    )
+    return response.json().get('access_token')
+
+
+# Camelot conversion lookup
+CAMELOT = {
+    (0, 1): '8B', (1, 1): '3B', (2, 1): '10B', (3, 1): '5B',
+    (4, 1): '12B', (5, 1): '7B', (6, 1): '2B', (7, 1): '9B',
+    (8, 1): '4B', (9, 1): '11B', (10, 1): '6B', (11, 1): '1B',
+    (0, 0): '5A', (1, 0): '12A', (2, 0): '7A', (3, 0): '2A',
+    (4, 0): '9A', (5, 0): '4A', (6, 0): '11A', (7, 0): '6A',
+    (8, 0): '1A', (9, 0): '8A', (10, 0): '3A', (11, 0): '10A',
+}
+
+KEY_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+
+
 def get_song_bpm_and_key(song_name, artist_name):
-    """Fetch BPM and key from GetSongBPM API"""
-    search_url = "https://api.getsong.co/search/"
-    
-    search_params = {
-        'api_key': API_KEY,
-        'type': 'song',
-        'lookup': f"{artist_name} {song_name}"
-    }
-    
-    try:
-        response = requests.get(search_url, params=search_params, timeout=10)
-        response.raise_for_status()
-        data = response.json()
-        
-        if 'search' not in data or len(data['search']) == 0:
-            return None
-        
-        song_id = data['search'][0].get('id')
-        
-        # Get detailed info
-        detail_url = "https://api.getsong.co/song/"
-        detail_params = {'api_key': API_KEY, 'id': song_id}
-        
-        detail_response = requests.get(detail_url, params=detail_params, timeout=10)
-        detail_response.raise_for_status()
-        song_data = detail_response.json()
-        
-        if 'song' not in song_data:
-            return None
-        
-        song = song_data['song']
-        artist = song.get('artist', {})
-        
-        # Extract genre from artist.genres array (API returns array of genres)
-        genres = artist.get('genres', [])
-        genre = ', '.join(genres) if genres else ''
-        
-        return SongInfo(
-            title=song.get('title', song_name),
-            artist=artist.get('name', artist_name),
-            tempo=int(song.get('tempo')) if song.get('tempo') else None,
-            key=song.get('key_of'),
-            camelot=song.get('open_key'),
-            genre=genre
-        )
-        
-    except Exception as e:
-        print(f"Error: {e}")
+    token = get_spotify_token()
+    if not token:
         return None
-
-
-@app.route('/')
-def index():
-    """Main page"""
-    return render_template('index.html')
-
-
-@app.route('/add', methods=['POST'])
-def add_song():
-    """Add songs to the master list"""
-    songs_input = request.json.get('songs', [])
     
-    results = []
-    for song_data in songs_input:
-        song_name = song_data.get('title', '')
-        artist_name = song_data.get('artist', '')
-        
-        if song_name and artist_name:
-            song_info = get_song_bpm_and_key(song_name, artist_name)
-            if song_info:
-                song_dict = song_info.to_dict()
-                
-                # Add to master list if not already there
-                if not any(s['title'] == song_dict['title'] and s['artist'] == song_dict['artist'] for s in master_song_list):
-                    master_song_list.append(song_dict)
-                results.append(song_dict)
-            # If song not found in API, skip it (don't add to master list)
+    headers = {'Authorization': f'Bearer {token}'}
     
-    return jsonify({'songs': results})
-
+    # Search for the track
+    search_response = requests.get('https://api.spotify.com/v1/search', 
+        headers=headers,
+        params={'q': f'track:{song_name} artist:{artist_name}', 'type': 'track', 'limit': 1}
+    )
+    
+    results = search_response.json()
+    tracks = results.get('tracks', {}).get('items', [])
+    if not tracks:
+        return None
+    
+    track = tracks[0]
+    track_id = track['id']
+    
+    # Get audio features
+    features_response = requests.get(f'https://api.spotify.com/v1/audio-features/{track_id}',
+        headers=headers
+    )
+    features = features_response.json()
+    
+    key = features.get('key')  # 0-11
+    mode = features.get('mode')  # 1=major, 0=minor
+    tempo = features.get('tempo')
+    
+    key_name = KEY_NAMES[key] if key is not None and key >= 0 else None
+    camelot = CAMELOT.get((key, mode)) if key is not None else None
+    
+    return SongInfo(
+        title=track['name'],
+        artist=track['artists'][0]['name'],
+        tempo=round(tempo) if tempo else None,
+        key=key_name,
+        camelot=camelot,
+        genre=''
+    )
 
 @app.route('/upload_txt', methods=['POST'])
 def upload_txt():
