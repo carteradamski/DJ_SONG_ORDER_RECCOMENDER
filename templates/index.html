@@ -264,7 +264,14 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    alert(`Successfully added ${data.added} songs!`);
+                    let message = `Successfully added ${data.added} songs!`;
+                    if (data.skipped > 0) {
+                        message += `\n\nSkipped ${data.skipped} songs not found in API:\n`;
+                        data.skipped_songs.forEach(song => {
+                            message += `- ${song.title} by ${song.artist}\n`;
+                        });
+                    }
+                    alert(message);
                     await loadMasterList();
                     fileInput.value = ''; // Clear file input
                 } else {

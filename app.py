@@ -7,8 +7,6 @@ from flask import Flask, render_template, request, jsonify
 import requests
 
 app = Flask(__name__)
-
-# TODO: Add your GetSongBPM API key here
 API_KEY = '6770b0b81d2bd417dba76b33fd591683'
 
 # In-memory storage for master song list
@@ -17,12 +15,13 @@ master_song_list = []
 
 class SongInfo:
     """Container for song data"""
-    def __init__(self, title, artist, tempo=None, key=None, camelot=None):
+    def __init__(self, title, artist, tempo=None, key=None, camelot=None, genre=''):
         self.title = title
         self.artist = artist
         self.tempo = tempo
         self.key = key
         self.camelot = camelot
+        self.genre = genre
     
     def to_dict(self):
         return {
@@ -37,7 +36,7 @@ class SongInfo:
 
 def get_song_bpm_and_key(song_name, artist_name):
     """Fetch BPM and key from GetSongBPM API"""
-    search_url = "https://api.getsongbpm.com/search/"
+    search_url = "https://api.getsong.co/search/"
     
     search_params = {
         'api_key': API_KEY,
@@ -56,7 +55,7 @@ def get_song_bpm_and_key(song_name, artist_name):
         song_id = data['search'][0].get('id')
         
         # Get detailed info
-        detail_url = "https://api.getsongbpm.com/song/"
+        detail_url = "https://api.getsong.co/song/"
         detail_params = {'api_key': API_KEY, 'id': song_id}
         
         detail_response = requests.get(detail_url, params=detail_params, timeout=10)
@@ -69,13 +68,17 @@ def get_song_bpm_and_key(song_name, artist_name):
         song = song_data['song']
         artist = song.get('artist', {})
         
+        # Extract genre from artist.genres array (API returns array of genres)
+        genres = artist.get('genres', [])
+        genre = ', '.join(genres) if genres else ''
+        
         return SongInfo(
             title=song.get('title', song_name),
             artist=artist.get('name', artist_name),
             tempo=int(song.get('tempo')) if song.get('tempo') else None,
             key=song.get('key_of'),
             camelot=song.get('open_key'),
-            genre=song.get('genre', artist_name)
+            genre=genre
         )
         
     except Exception as e:
@@ -103,20 +106,12 @@ def add_song():
             song_info = get_song_bpm_and_key(song_name, artist_name)
             if song_info:
                 song_dict = song_info.to_dict()
-            else:
-                # TEMPORARY: Add songs even if not found in database
-                song_dict = {
-                    'title': song_name,
-                    'artist': artist_name,
-                    'tempo': None,
-                    'key': 'Not found',
-                    'camelot': None
-                }
-            
-            # Add to master list if not already there
-            if not any(s['title'] == song_dict['title'] and s['artist'] == song_dict['artist'] for s in master_song_list):
-                master_song_list.append(song_dict)
-            results.append(song_dict)
+                
+                # Add to master list if not already there
+                if not any(s['title'] == song_dict['title'] and s['artist'] == song_dict['artist'] for s in master_song_list):
+                    master_song_list.append(song_dict)
+                results.append(song_dict)
+            # If song not found in API, skip it (don't add to master list)
     
     return jsonify({'songs': results})
 
@@ -155,6 +150,7 @@ def upload_txt():
         
         # Process each song (fetch BPM/key data)
         results = []
+        skipped = []
         for song_data in songs_to_add:
             song_name = song_data['title']
             artist_name = song_data['artist']
@@ -162,24 +158,20 @@ def upload_txt():
             song_info = get_song_bpm_and_key(song_name, artist_name)
             if song_info:
                 song_dict = song_info.to_dict()
+                
+                # Add to master list if not already there
+                if not any(s['title'] == song_dict['title'] and s['artist'] == song_dict['artist'] for s in master_song_list):
+                    master_song_list.append(song_dict)
+                results.append(song_dict)
             else:
-                song_dict = {
-                    'title': song_name,
-                    'artist': artist_name,
-                    'tempo': None,
-                    'key': 'Not found',
-                    'camelot': None,
-                    'genre': ''
-                }
-            
-            # Add to master list if not already there
-            if not any(s['title'] == song_dict['title'] and s['artist'] == song_dict['artist'] for s in master_song_list):
-                master_song_list.append(song_dict)
-            results.append(song_dict)
+                # Song not found in API, skip it
+                skipped.append({'title': song_name, 'artist': artist_name})
         
         return jsonify({
             'success': True,
             'added': len(results),
+            'skipped': len(skipped),
+            'skipped_songs': skipped,
             'songs': results,
             'master_list': master_song_list
         })
