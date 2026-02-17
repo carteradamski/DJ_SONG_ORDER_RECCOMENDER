@@ -1,1 +1,1 @@
-I started learning to be a DJ. Realized it sounded better to mix songs that had similar bpms and keys. Made this program to take the songs you want to listen to and then it gives an optimal order to play the songs to have seemless transitions
+I started learning to be a DJ. Realized it sounded better to mix songs that had similar bpms and keys. Made this program to take the songs you want to listen to and then it gives an optimal order to play the songs to have seamless transitions
