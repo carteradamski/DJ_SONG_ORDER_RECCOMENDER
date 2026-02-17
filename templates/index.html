@@ -91,9 +91,40 @@
         .song-result {
             background: #f7fafc;
             padding: 15px;
+            padding-left: 50px;
             margin-bottom: 10px;
             border-radius: 8px;
             border-left: 4px solid #667eea;
+            position: relative;
+            transition: background 0.2s;
+        }
+        
+        .song-result:hover {
+            background: #edf2f7;
+        }
+        
+        .delete-btn {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #f56565;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            transition: background 0.2s;
+        }
+        
+        .delete-btn:hover {
+            background: #e53e3e;
         }
         
         .song-title {
@@ -134,16 +165,19 @@
         <p class="subtitle">Enter your songs to analyze BPM and key</p>
         
         <div class="input-section">
-            <div id="song-inputs">
-                <div class="song-input">
-                    <input type="text" placeholder="Song Title" class="song-title-input">
-                    <input type="text" placeholder="Artist" class="artist-input">
-                </div>
+            <div class="song-input">
+                <input type="text" id="songTitle" placeholder="Song Title" class="song-title-input">
+                <input type="text" id="artistName" placeholder="Artist" class="artist-input">
+                <button onclick="addSong()" class="add-btn">+ Add Song</button>
             </div>
-            <button onclick="addSongInput()" class="add-btn">+ Add Another Song</button>
+            <div class="song-input" style="margin-top: 15px;">
+                <input type="file" id="txtFile" accept=".txt" style="flex: 2;">
+                <button onclick="uploadTxtFile()" class="add-btn">📁 Upload TXT File</button>
+            </div>
+            <p style="color: #666; font-size: 14px; margin-top: 10px;">TXT format: One song per line as "Title | Artist"</p>
         </div>
         
-        <button onclick="analyzeSongs()">Analyze Songs</button>
+        <button onclick="orderSongs()">Ordering</button>
         
         <div id="results"></div>
         
@@ -153,70 +187,119 @@
     </div>
     
     <script>
-        function addSongInput() {
-            const container = document.getElementById('song-inputs');
-            const newInput = document.createElement('div');
-            newInput.className = 'song-input';
-            newInput.innerHTML = `
-                <input type="text" placeholder="Song Title" class="song-title-input">
-                <input type="text" placeholder="Artist" class="artist-input">
-            `;
-            container.appendChild(newInput);
+        // Load master song list on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadMasterList();
+        });
+        
+        async function loadMasterList() {
+            try {
+                const response = await fetch('/songs');
+                const data = await response.json();
+                displayResults(data.songs);
+            } catch (error) {
+                console.error('Error loading songs:', error);
+            }
         }
         
-        async function analyzeSongs() {
-            const songInputs = document.querySelectorAll('.song-input');
-            const songs = [];
+        async function addSong() {
+            const title = document.getElementById('songTitle').value.trim();
+            const artist = document.getElementById('artistName').value.trim();
             
-            songInputs.forEach(input => {
-                const title = input.querySelector('.song-title-input').value.trim();
-                const artist = input.querySelector('.artist-input').value.trim();
-                
-                if (title && artist) {
-                    songs.push({ title, artist });
-                }
-            });
-            
-            if (songs.length === 0) {
-                alert('Please enter at least one song');
+            if (!title || !artist) {
+                alert('Please enter both song title and artist');
                 return;
             }
             
             const resultsDiv = document.getElementById('results');
-            resultsDiv.innerHTML = '<div class="loading">Analyzing songs...</div>';
+            const currentContent = resultsDiv.innerHTML;
+            resultsDiv.innerHTML = '<div class="loading">Adding song...</div>';
             
             try {
-                const response = await fetch('/analyze', {
+                const response = await fetch('/add', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ songs })
+                    body: JSON.stringify({ songs: [{ title, artist }] })
                 });
                 
                 const data = await response.json();
-                displayResults(data.songs);
+                // Reload the master list to show all songs
+                await loadMasterList();
+                // Clear input fields
+                document.getElementById('songTitle').value = '';
+                document.getElementById('artistName').value = '';
+                // Focus back on title input
+                document.getElementById('songTitle').focus();
             } catch (error) {
-                resultsDiv.innerHTML = '<div class="loading">Error analyzing songs</div>';
+                resultsDiv.innerHTML = currentContent;
+                alert('Error adding song');
+                console.error('Error:', error);
             }
+        }
+        
+        async function uploadTxtFile() {
+            const fileInput = document.getElementById('txtFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select a TXT file first');
+                return;
+            }
+            
+            const resultsDiv = document.getElementById('results');
+            const currentContent = resultsDiv.innerHTML;
+            resultsDiv.innerHTML = '<div class="loading">Uploading and processing songs from file...</div>';
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const response = await fetch('/upload_txt', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`Successfully added ${data.added} songs!`);
+                    await loadMasterList();
+                    fileInput.value = ''; // Clear file input
+                } else {
+                    resultsDiv.innerHTML = currentContent;
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = currentContent;
+                alert('Error uploading file');
+                console.error('Error:', error);
+            }
+        }
+        
+        function orderSongs() {
+            // TODO: Implement ordering logic
+            alert('Ordering feature coming soon!');
         }
         
         function displayResults(songs) {
             const resultsDiv = document.getElementById('results');
             
             if (songs.length === 0) {
-                resultsDiv.innerHTML = '<p>No results found</p>';
+                resultsDiv.innerHTML = '<p>No songs in your list yet. Add some songs above!</p>';
                 return;
             }
             
-            let html = '<h2 style="margin-bottom: 20px;">Results:</h2>';
+            let html = '<h2 style="margin-bottom: 20px;">Your Playlist:</h2>';
             
-            songs.forEach(song => {
+            songs.forEach((song, index) => {
                 html += `
                     <div class="song-result">
+                        <button class="delete-btn" onclick="deleteSong(${index})" title="Remove song">×</button>
                         <div class="song-title">${song.title} - ${song.artist}</div>
                         <div class="song-details">
-                            BPM: ${song.bpm || 'N/A'} | 
+                            Tempo: ${song.tempo || 'N/A'} BPM | 
                             Key: ${song.key || 'N/A'} | 
                             Camelot: ${song.camelot || 'N/A'}
                         </div>
@@ -225,6 +308,23 @@
             });
             
             resultsDiv.innerHTML = html;
+        }
+        
+        async function deleteSong(index) {
+            try {
+                const response = await fetch(`/songs/${index}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+                if (data.success) {
+                    displayResults(data.songs);
+                } else {
+                    alert('Error deleting song');
+                }
+            } catch (error) {
+                alert('Error deleting song');
+                console.error('Error:', error);
+            }
         }
     </script>
 </body>
