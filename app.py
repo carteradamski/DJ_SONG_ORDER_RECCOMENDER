@@ -1,47 +1,22 @@
 """
 DJ Playlist Optimizer - Flask Web App
-Powered by MusicBrainz + AcousticBrainz (no API key required)
+CSV Upload and Download for Spotify Playlist Import
 """
 
-from flask import Flask, render_template, request, jsonify
-import requests
-import time
+from flask import Flask, render_template, request, jsonify, send_file
+import csv
+import io
 
 app = Flask(__name__)
 
-# In-memory storage for master song list
-master_song_list = []
+# In-memory storage for song list
+song_list = []
 
-# MusicBrainz requires a descriptive User-Agent or requests get blocked
-# TODO: Replace 'your@email.com' with your actual email address
-MUSICBRAINZ_HEADERS = {
-    'User-Agent': 'DJPlaylistOptimizer/1.0 (carterad@umich.edu)'
-}
-
-
-class SongInfo:
-    """Container for song data"""
-    def __init__(self, title, artist, tempo=None, key=None, camelot=None, genre=''):
-        self.title = title
-        self.artist = artist
-        self.tempo = tempo
-        self.key = key
-        self.camelot = camelot
-        self.genre = genre
-
-    def to_dict(self):
-        return {
-            'title': self.title,
-            'artist': self.artist,
-            'tempo': self.tempo,
-            'key': self.key,
-            'camelot': self.camelot,
-            'genre': self.genre
-        }
-
+# Spotify Key mapping (pitch class notation to key names)
+KEY_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
 # Camelot wheel lookup: (key_name, scale) -> camelot notation
-CAMELOT = {
+CAMELOT_WHEEL = {
     ('C', 'major'): '8B',  ('C', 'minor'): '5A',
     ('C#', 'major'): '3B', ('C#', 'minor'): '12A',
     ('D', 'major'): '10B', ('D', 'minor'): '7A',
@@ -56,92 +31,46 @@ CAMELOT = {
     ('B', 'major'): '1B',  ('B', 'minor'): '10A',
 }
 
-# AcousticBrainz uses flat notation sometimes, normalize to sharps
-FLAT_TO_SHARP = {
-    'Db': 'C#', 'Eb': 'D#', 'Fb': 'E', 'Gb': 'F#',
-    'Ab': 'G#', 'Bb': 'A#', 'Cb': 'B'
-}
 
+class SongInfo:
+    """Container for song data"""
+    def __init__(self, title, artist, tempo=None, key=None, camelot=None, genre=''):
+        self.title = title
+        self.artist = artist
+        self.tempo = tempo if tempo else None
+        self.key = key if key else None
+        self.camelot = camelot if camelot else None
+        self.genre = genre if genre else ''
 
-def get_song_bpm_and_key(song_name, artist_name):
-    """
-    Fetch BPM and key using MusicBrainz (to find MBID) + AcousticBrainz (for audio data).
-    No API key required.
-    """
-    try:
-        # Step 1: Search MusicBrainz for the recording to get its MBID
-        search_url = 'https://musicbrainz.org/ws/2/recording/'
-        search_params = {
-            'query': f'recording:"{song_name}" AND artist:"{artist_name}"',
-            'fmt': 'json',
-            'limit': 5
+    def to_dict(self):
+        return {
+            'title': self.title,
+            'artist': self.artist,
+            'tempo': self.tempo,
+            'key': self.key,
+            'camelot': self.camelot,
+            'genre': self.genre
         }
 
-        search_response = requests.get(
-            search_url,
-            params=search_params,
-            headers=MUSICBRAINZ_HEADERS,
-            timeout=10
-        )
-        search_response.raise_for_status()
-        search_data = search_response.json()
 
-        recordings = search_data.get('recordings', [])
-        if not recordings:
-            print(f"MusicBrainz: No results for {song_name} by {artist_name}")
-            return None
-
-        # Pick the first result and grab its MBID
-        mbid = recordings[0].get('id')
-        found_title = recordings[0].get('title', song_name)
-        found_artist = artist_name
-        if recordings[0].get('artist-credit'):
-            found_artist = recordings[0]['artist-credit'][0].get('artist', {}).get('name', artist_name)
-
-        # MusicBrainz rate limit: max 1 request/second for unauthenticated users
-        time.sleep(1)
-
-        # Step 2: Query AcousticBrainz for audio features using the MBID
-        ab_url = f'https://acousticbrainz.org/{mbid}/low-level'
-        ab_response = requests.get(ab_url, timeout=10)
-
-        if ab_response.status_code == 404:
-            print(f"AcousticBrainz: No data for MBID {mbid}")
-            return None
-
-        ab_response.raise_for_status()
-        ab_data = ab_response.json()
-
-        # Extract BPM
-        tempo = ab_data.get('rhythm', {}).get('bpm')
-
-        # Extract key and scale
-        tonal = ab_data.get('tonal', {})
-        key_name = tonal.get('key_key')   # e.g. "C", "F#", "Bb"
-        scale = tonal.get('key_scale')    # "major" or "minor"
-
-        # Normalize flat notation to sharp
-        if key_name in FLAT_TO_SHARP:
-            key_name = FLAT_TO_SHARP[key_name]
-
-        # Build display key string (e.g. "C# minor")
-        key_display = f"{key_name} {scale}" if key_name and scale else None
-
-        # Look up Camelot notation
-        camelot = CAMELOT.get((key_name, scale)) if key_name and scale else None
-
-        return SongInfo(
-            title=found_title,
-            artist=found_artist,
-            tempo=round(tempo) if tempo else None,
-            key=key_display,
-            camelot=camelot,
-            genre=''
-        )
-
-    except Exception as e:
-        print(f"Error fetching song data: {e}")
-        return None
+def convert_spotify_key_to_notation(key_num, mode):
+    """Convert Spotify's Key (0-11) and Mode (0=minor, 1=major) to readable format and Camelot"""
+    try:
+        key_num = int(key_num)
+        mode = int(mode)
+        
+        if key_num < 0 or key_num > 11:
+            return None, None
+        
+        key_name = KEY_NAMES[key_num]
+        scale = 'major' if mode == 1 else 'minor'
+        
+        key_display = f"{key_name} {scale}"
+        camelot = CAMELOT_WHEEL.get((key_name, scale))
+        
+        return key_display, camelot
+    except (ValueError, IndexError):
+        return None, None
 
 
 @app.route('/')
@@ -149,40 +78,11 @@ def index():
     return render_template('index.html')
 
 
-@app.route('/add', methods=['POST'])
-def add_song():
-    """Add songs to the master list"""
-    songs_input = request.json.get('songs', [])
-
-    results = []
-    for song_data in songs_input:
-        song_name = song_data.get('title', '')
-        artist_name = song_data.get('artist', '')
-
-        if song_name and artist_name:
-            song_info = get_song_bpm_and_key(song_name, artist_name)
-            if song_info:
-                song_dict = song_info.to_dict()
-            else:
-                song_dict = {
-                    'title': song_name,
-                    'artist': artist_name,
-                    'tempo': None,
-                    'key': 'Not found',
-                    'camelot': None,
-                    'genre': ''
-                }
-
-            if not any(s['title'] == song_dict['title'] and s['artist'] == song_dict['artist'] for s in master_song_list):
-                master_song_list.append(song_dict)
-            results.append(song_dict)
-
-    return jsonify({'songs': results})
-
-
-@app.route('/upload_txt', methods=['POST'])
-def upload_txt():
-    """Upload and parse a txt file with songs in 'Title | Artist' format"""
+@app.route('/upload_csv', methods=['POST'])
+def upload_csv():
+    """Upload and parse a CSV file with Spotify export format"""
+    global song_list
+    
     if 'file' not in request.files:
         return jsonify({'success': False, 'error': 'No file provided'}), 400
 
@@ -191,49 +91,111 @@ def upload_txt():
     if file.filename == '':
         return jsonify({'success': False, 'error': 'No file selected'}), 400
 
-    if not file.filename.endswith('.txt'):
-        return jsonify({'success': False, 'error': 'Only .txt files are allowed'}), 400
+    if not file.filename.endswith('.csv'):
+        return jsonify({'success': False, 'error': 'Only .csv files are allowed'}), 400
 
     try:
+        # Read CSV file
         content = file.read().decode('utf-8')
-        lines = content.strip().split('\n')
-
-        songs_to_add = []
-        for line in lines:
-            line = line.strip()
-            if not line or '|' not in line:
+        csv_reader = csv.DictReader(io.StringIO(content))
+        
+        song_list = []
+        for row in csv_reader:
+            # Parse Spotify CSV format
+            # Expected columns: Track Name, Artist Name(s), Tempo, Key, Mode, Genres, etc.
+            title = row.get('Track Name', '').strip()
+            artist = row.get('Artist Name(s)', '').strip()
+            
+            if not title or not artist:
                 continue
-            parts = line.split('|')
-            if len(parts) >= 2:
-                title = parts[0].strip()
-                artist = parts[1].strip()
-                if title and artist:
-                    songs_to_add.append({'title': title, 'artist': artist})
-
-        results = []
-        skipped = []
-        for song_data in songs_to_add:
-            song_name = song_data['title']
-            artist_name = song_data['artist']
-
-            song_info = get_song_bpm_and_key(song_name, artist_name)
-            if song_info:
-                song_dict = song_info.to_dict()
-                if not any(s['title'] == song_dict['title'] and s['artist'] == song_dict['artist'] for s in master_song_list):
-                    master_song_list.append(song_dict)
-                results.append(song_dict)
+            
+            # Parse tempo (round to integer)
+            tempo_str = row.get('Tempo', '').strip()
+            try:
+                tempo = int(float(tempo_str)) if tempo_str else None
+            except (ValueError, TypeError):
+                tempo = None
+            
+            # Parse key and mode from Spotify format
+            key_num = row.get('Key', '').strip()
+            mode = row.get('Mode', '').strip()
+            
+            if key_num and mode:
+                key_display, camelot = convert_spotify_key_to_notation(key_num, mode)
             else:
-                skipped.append({'title': song_name, 'artist': artist_name})
+                key_display = None
+                camelot = None
+            
+            # Get genres
+            genre = row.get('Genres', '').strip()
+            
+            song_dict = {
+                'title': title,
+                'artist': artist,
+                'tempo': tempo,
+                'key': key_display,
+                'camelot': camelot,
+                'genre': genre
+            }
+            song_list.append(song_dict)
 
         return jsonify({
             'success': True,
-            'added': len(results),
-            'skipped': len(skipped),
-            'skipped_songs': skipped,
-            'songs': results,
-            'master_list': master_song_list
+            'count': len(song_list),
+            'songs': song_list
         })
 
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/download_csv', methods=['GET'])
+def download_csv():
+    """Download the current song list as CSV for Spotify import"""
+    if not song_list:
+        return jsonify({'success': False, 'error': 'No songs to download'}), 400
+
+    # Create CSV in memory with Spotify-compatible format
+    output = io.StringIO()
+    fieldnames = ['title', 'artist', 'tempo', 'key', 'camelot', 'genre']
+    writer = csv.DictWriter(output, fieldnames=fieldnames)
+    
+    writer.writeheader()
+    for song in song_list:
+        writer.writerow({
+            'title': song.get('title', ''),
+            'artist': song.get('artist', ''),
+            'tempo': song.get('tempo', '') if song.get('tempo') else '',
+            'key': song.get('key', '') if song.get('key') else '',
+            'camelot': song.get('camelot', '') if song.get('camelot') else '',
+            'genre': song.get('genre', '')
+        })
+    
+    # Convert to bytes for download
+    output.seek(0)
+    return send_file(
+        io.BytesIO(output.getvalue().encode('utf-8')),
+        mimetype='text/csv',
+        as_attachment=True,
+        download_name='optimized_playlist.csv'
+    )
+
+
+@app.route('/optimize', methods=['POST'])
+def optimize_playlist():
+    """Optimize the current playlist order and return the reordered list"""
+    global song_list
+    
+    if not song_list:
+        return jsonify({'success': False, 'error': 'No songs to optimize'}), 400
+    
+    try:
+        song_list = make_End_list(song_list)
+        return jsonify({
+            'success': True,
+            'count': len(song_list),
+            'songs': song_list
+        })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -360,19 +322,8 @@ def add_song_after(optimized_list, new_song):
 
 @app.route('/songs', methods=['GET'])
 def get_songs():
-    return jsonify({'songs': master_song_list})
-
-
-@app.route('/songs/<int:index>', methods=['DELETE'])
-def delete_song(index):
-    try:
-        if 0 <= index < len(master_song_list):
-            deleted_song = master_song_list.pop(index)
-            return jsonify({'success': True, 'deleted': deleted_song, 'songs': master_song_list})
-        else:
-            return jsonify({'success': False, 'error': 'Index out of range'}), 400
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+    """Get the current song list"""
+    return jsonify({'songs': song_list, 'count': len(song_list)})
 
 
 if __name__ == '__main__':

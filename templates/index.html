@@ -12,248 +12,330 @@
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: #e0e0e0;
             padding: 20px;
+            line-height: 1.6;
         }
         
         .container {
-            max-width: 900px;
+            max-width: 1100px;
             margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            background: #0f0f0f;
+            padding: 30px;
+            border: 1px solid #00ff88;
         }
         
         h1 {
-            color: #667eea;
-            margin-bottom: 10px;
-            font-size: 2.5em;
+            color: #00ff88;
+            margin-bottom: 8px;
+            font-size: 2.2em;
+            font-weight: 700;
+            letter-spacing: -0.5px;
         }
         
         .subtitle {
-            color: #666;
-            margin-bottom: 30px;
+            color: #999;
+            margin-bottom: 25px;
+            font-size: 0.95em;
         }
         
-        .input-section {
-            margin-bottom: 30px;
+        .upload-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            border: 2px solid #00ff88;
+            background: #0a0a0a;
         }
         
-        .song-input {
+        .upload-section h2 {
+            color: #e0e0e0;
+            margin-bottom: 12px;
+            font-size: 1.2em;
+            font-weight: 600;
+        }
+        
+        .file-input-wrapper {
             display: flex;
             gap: 10px;
-            margin-bottom: 10px;
+            margin-top: 15px;
         }
         
-        input {
+        input[type="file"] {
             flex: 1;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 16px;
+            padding: 10px;
+            border: 1px solid #00ff88;
+            background: #000;
+            color: #e0e0e0;
+            font-size: 14px;
         }
         
-        input:focus {
-            outline: none;
-            border-color: #667eea;
+        input[type="file"]::file-selector-button {
+            padding: 8px 15px;
+            background: #1a1a1a;
+            color: #00ff88;
+            border: 1px solid #00ff88;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        
+        input[type="file"]::file-selector-button:hover {
+            background: #00ff88;
+            color: #000;
         }
         
         button {
-            padding: 12px 30px;
-            background: #667eea;
-            color: white;
+            padding: 10px 24px;
+            background: #00ff88;
+            color: #000;
             border: none;
-            border-radius: 8px;
-            font-size: 16px;
+            font-size: 14px;
             cursor: pointer;
-            transition: background 0.3s;
+            font-weight: 500;
+            transition: background 0.2s;
         }
         
         button:hover {
-            background: #5568d3;
+            background: #00dd77;
         }
         
-        .add-btn {
-            background: #48bb78;
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+            opacity: 0.6;
         }
         
-        .add-btn:hover {
-            background: #38a169;
+        .upload-btn {
+            background: #00ff88;
+        }
+        
+        .upload-btn:hover {
+            background: #00dd77;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            margin: 20px 0;
+        }
+        
+        .optimize-btn {
+            background: #00ff88;
+        }
+        
+        .optimize-btn:hover {
+            background: #00dd77;
+        }
+        
+        .download-btn {
+            background: #00cc66;
+        }
+        
+        .download-btn:hover {
+            background: #00bb55;
         }
         
         #results {
-            margin-top: 30px;
+            margin-top: 25px;
+        }
+        
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-item {
+            background: #0a0a0a;
+            padding: 15px;
+            border-left: 3px solid #00ff88;
+        }
+        
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: #00ff88;
+        }
+        
+        .stat-label {
+            font-size: 0.85em;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         
         .song-result {
-            background: #f7fafc;
-            padding: 15px;
-            padding-left: 50px;
-            margin-bottom: 10px;
-            border-radius: 8px;
-            border-left: 4px solid #667eea;
-            position: relative;
-            transition: background 0.2s;
+            background: #0a0a0a;
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            border-left: 3px solid #1a1a1a;
+            display: flex;
+            gap: 12px;
+            transition: border-color 0.2s;
         }
         
         .song-result:hover {
-            background: #edf2f7;
+            border-left-color: #00ff88;
         }
         
-        .delete-btn {
-            position: absolute;
-            left: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: #f56565;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            font-size: 16px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0;
-            transition: background 0.2s;
+        .song-number {
+            font-size: 1em;
+            font-weight: 600;
+            color: #666;
+            min-width: 30px;
         }
         
-        .delete-btn:hover {
-            background: #e53e3e;
+        .song-content {
+            flex: 1;
         }
         
         .song-title {
-            font-weight: bold;
-            color: #2d3748;
-            margin-bottom: 5px;
+            font-weight: 600;
+            color: #e0e0e0;
+            margin-bottom: 4px;
+            font-size: 0.95em;
         }
         
         .song-details {
-            color: #4a5568;
-            font-size: 14px;
+            color: #999;
+            font-size: 0.85em;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .detail-item {
+            display: inline;
+        }
+        
+        .detail-label {
+            color: #777;
         }
         
         .loading {
             text-align: center;
-            color: #667eea;
-            padding: 20px;
+            color: #999;
+            padding: 40px;
+            font-size: 1em;
         }
         
-        .footer {
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
+        .empty-state {
             text-align: center;
+            padding: 50px 20px;
             color: #666;
-            font-size: 14px;
         }
         
-        .footer a {
-            color: #667eea;
-            text-decoration: none;
+        .empty-state h3 {
+            color: #999;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .instructions {
+            background: #0a0a0a;
+            padding: 18px;
+            margin-bottom: 20px;
+            border-left: 3px solid #00ff88;
+        }
+        
+        .instructions h3 {
+            color: #00ff88;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+        
+        .instructions ol {
+            margin-left: 20px;
+            color: #ccc;
+        }
+        
+        .instructions li {
+            margin-bottom: 6px;
+        }
+
+        .playlist-header {
+            margin-bottom: 15px;
+            color: #e0e0e0;
+            font-size: 1.1em;
+            font-weight: 600;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🎧 DJ Playlist Optimizer</h1>
-        <p class="subtitle">Enter your songs to analyze BPM and key</p>
+        <h1>DJ Playlist Optimizer</h1>
+        <p class="subtitle">Upload Spotify CSV, optimize song order, download results</p>
         
-        <div class="input-section">
-            <div class="song-input">
-                <input type="text" id="songTitle" placeholder="Song Title" class="song-title-input">
-                <input type="text" id="artistName" placeholder="Artist" class="artist-input">
-                <button onclick="addSong()" class="add-btn">+ Add Song</button>
-            </div>
-            <div class="song-input" style="margin-top: 15px;">
-                <input type="file" id="txtFile" accept=".txt" style="flex: 2;">
-                <button onclick="uploadTxtFile()" class="add-btn">📁 Upload TXT File</button>
-            </div>
-            <p style="color: #666; font-size: 14px; margin-top: 10px;">TXT format: One song per line as "Title | Artist"</p>
+        <div class="instructions">
+            <h3>How to use</h3>
+            <ol>
+                <li>Export your Spotify playlist as a CSV file</li>
+                <li>Upload the CSV file below</li>
+                <li>Click "Optimize Playlist" to reorder songs for smooth transitions</li>
+                <li>Download the optimized CSV and import back to Spotify</li>
+            </ol>
         </div>
         
-        <button onclick="orderSongs()">Ordering</button>
+        <div class="upload-section">
+            <h2>Upload Spotify Playlist CSV</h2>
+            <p style="color: #888; font-size: 0.9em; margin-top: 8px;">Select your exported Spotify playlist CSV file</p>
+            <div class="file-input-wrapper">
+                <input type="file" id="csvFile" accept=".csv">
+                <button onclick="uploadCSV()" class="upload-btn">Upload</button>
+            </div>
+        </div>
+        
+        <div class="action-buttons" id="actionButtons" style="display: none;">
+            <button onclick="optimizePlaylist()" class="optimize-btn" id="optimizeBtn">Optimize Playlist</button>
+            <button onclick="downloadCSV()" class="download-btn" id="downloadBtn">Download CSV</button>
+        </div>
         
         <div id="results"></div>
-        </div>
     </div>
     
     <script>
-        // Load master song list on page load
+        let currentSongs = [];
+        
         window.addEventListener('DOMContentLoaded', () => {
-            loadMasterList();
+            loadCurrentSongs();
         });
         
-        async function loadMasterList() {
+        async function loadCurrentSongs() {
             try {
                 const response = await fetch('/songs');
                 const data = await response.json();
-                displayResults(data.songs);
+                if (data.songs && data.songs.length > 0) {
+                    currentSongs = data.songs;
+                    displayResults(data.songs);
+                    document.getElementById('actionButtons').style.display = 'flex';
+                } else {
+                    showEmptyState();
+                }
             } catch (error) {
                 console.error('Error loading songs:', error);
+                showEmptyState();
             }
         }
         
-        async function addSong() {
-            const title = document.getElementById('songTitle').value.trim();
-            const artist = document.getElementById('artistName').value.trim();
-            
-            if (!title || !artist) {
-                alert('Please enter both song title and artist');
-                return;
-            }
-            
-            const resultsDiv = document.getElementById('results');
-            const currentContent = resultsDiv.innerHTML;
-            resultsDiv.innerHTML = '<div class="loading">Adding song...</div>';
-            
-            try {
-                const response = await fetch('/add', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ songs: [{ title, artist }] })
-                });
-                
-                const data = await response.json();
-                // Reload the master list to show all songs
-                await loadMasterList();
-                // Clear input fields
-                document.getElementById('songTitle').value = '';
-                document.getElementById('artistName').value = '';
-                // Focus back on title input
-                document.getElementById('songTitle').focus();
-            } catch (error) {
-                resultsDiv.innerHTML = currentContent;
-                alert('Error adding song');
-                console.error('Error:', error);
-            }
-        }
-        
-        async function uploadTxtFile() {
-            const fileInput = document.getElementById('txtFile');
+        async function uploadCSV() {
+            const fileInput = document.getElementById('csvFile');
             const file = fileInput.files[0];
             
             if (!file) {
-                alert('Please select a TXT file first');
+                alert('Please select a CSV file first');
                 return;
             }
             
             const resultsDiv = document.getElementById('results');
-            const currentContent = resultsDiv.innerHTML;
-            resultsDiv.innerHTML = '<div class="loading">Uploading and processing songs from file...</div>';
+            resultsDiv.innerHTML = '<div class="loading">Processing playlist...</div>';
             
             try {
                 const formData = new FormData();
                 formData.append('file', file);
                 
-                const response = await fetch('/upload_txt', {
+                const response = await fetch('/upload_csv', {
                     method: 'POST',
                     body: formData
                 });
@@ -261,51 +343,119 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    let message = `Successfully added ${data.added} songs!`;
-                    if (data.skipped > 0) {
-                        message += `\n\nSkipped ${data.skipped} songs not found in API:\n`;
-                        data.skipped_songs.forEach(song => {
-                            message += `- ${song.title} by ${song.artist}\n`;
-                        });
-                    }
-                    alert(message);
-                    await loadMasterList();
-                    fileInput.value = ''; // Clear file input
+                    currentSongs = data.songs;
+                    displayResults(data.songs);
+                    document.getElementById('actionButtons').style.display = 'flex';
+                    fileInput.value = '';
                 } else {
-                    resultsDiv.innerHTML = currentContent;
                     alert('Error: ' + data.error);
+                    showEmptyState();
                 }
             } catch (error) {
-                resultsDiv.innerHTML = currentContent;
                 alert('Error uploading file');
                 console.error('Error:', error);
+                showEmptyState();
             }
         }
         
-        function orderSongs() {
-            // TODO: Implement ordering logic
-            alert('Ordering feature coming soon!');
+        async function optimizePlaylist() {
+            const optimizeBtn = document.getElementById('optimizeBtn');
+            const originalText = optimizeBtn.textContent;
+            optimizeBtn.disabled = true;
+            optimizeBtn.textContent = 'Optimizing...';
+            
+            const resultsDiv = document.getElementById('results');
+            const currentContent = resultsDiv.innerHTML;
+            resultsDiv.innerHTML = '<div class="loading">Optimizing playlist order...</div>';
+            
+            try {
+                const response = await fetch('/optimize', {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentSongs = data.songs;
+                    displayResults(data.songs);
+                    alert('Playlist optimized! ' + data.count + ' songs reordered.');
+                } else {
+                    alert('Error: ' + data.error);
+                    resultsDiv.innerHTML = currentContent;
+                }
+            } catch (error) {
+                alert('Error optimizing playlist');
+                console.error('Error:', error);
+                resultsDiv.innerHTML = currentContent;
+            } finally {
+                optimizeBtn.disabled = false;
+                optimizeBtn.textContent = originalText;
+            }
+        }
+        
+        function downloadCSV() {
+            if (currentSongs.length === 0) {
+                alert('No songs to download. Upload a CSV file first.');
+                return;
+            }
+            window.location.href = '/download_csv';
+        }
+        
+        function showEmptyState() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `
+                <div class="empty-state">
+                    <h3>No playlist loaded</h3>
+                    <p>Upload a Spotify CSV file to get started</p>
+                </div>
+            `;
+            document.getElementById('actionButtons').style.display = 'none';
         }
         
         function displayResults(songs) {
             const resultsDiv = document.getElementById('results');
             
             if (songs.length === 0) {
-                resultsDiv.innerHTML = '<p>No songs in your list yet. Add some songs above!</p>';
+                showEmptyState();
                 return;
             }
             
-            let html = '<h2 style="margin-bottom: 20px;">Your Playlist:</h2>';
+            const tempos = songs.filter(s => s.tempo).map(s => s.tempo);
+            const avgTempo = tempos.length > 0 
+                ? Math.round(tempos.reduce((a, b) => a + b, 0) / tempos.length)
+                : 0;
+            
+            let html = `
+                <div class="stats-bar">
+                    <div class="stat-item">
+                        <div class="stat-value">${songs.length}</div>
+                        <div class="stat-label">Songs</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">${avgTempo}</div>
+                        <div class="stat-label">Avg BPM</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">${Math.round((songs.length * 3.5))}</div>
+                        <div class="stat-label">Minutes</div>
+                    </div>
+                </div>
+                <div class="playlist-header">Playlist</div>
+            `;
             
             songs.forEach((song, index) => {
+                const details = [];
+                details.push(song.artist);
+                if (song.tempo) details.push(song.tempo + ' BPM');
+                if (song.key) details.push(song.key);
+                if (song.camelot) details.push('(' + song.camelot + ')');
+                
                 html += `
                     <div class="song-result">
-                        <button class="delete-btn" onclick="deleteSong(${index})" title="Remove song">×</button>
-                        <div class="song-title">${song.title} - ${song.artist}</div>
-                        <div class="song-details">
-                            Tempo: ${song.tempo || 'N/A'} BPM | 
-                            Key: ${song.key || 'N/A'} | 
-                            Camelot: ${song.camelot || 'N/A'}
+                        <div class="song-number">${index + 1}</div>
+                        <div class="song-content">
+                            <div class="song-title">${song.title}</div>
+                            <div class="song-details">${details.join(' · ')}</div>
                         </div>
                     </div>
                 `;
@@ -313,33 +463,6 @@
             
             resultsDiv.innerHTML = html;
         }
-        
-        async function deleteSong(index) {
-            try {
-                const response = await fetch(`/songs/${index}`, {
-                    method: 'DELETE'
-                });
-                const data = await response.json();
-                if (data.success) {
-                    displayResults(data.songs);
-                } else {
-                    alert('Error deleting song');
-                }
-            } catch (error) {
-                alert('Error deleting song');
-                console.error('Error:', error);
-            }
-        }
     </script>
 </body>
 </html>
-```
-
-**Step 3: Project Structure**
-
-Your folder should look like this:
-```
-your-project/
-├── app.py
-└── templates/
-    └── index.html
